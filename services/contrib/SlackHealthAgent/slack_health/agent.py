@@ -2,7 +2,7 @@
 Agent documentation goes here.
 """
 
-__docformat__ = 'reStructuredText'
+__docformat__ = "reStructuredText"
 
 import logging
 import re
@@ -42,8 +42,13 @@ class SlackHealth(Agent):
     Document agent constructor here.
     """
 
-    def __init__(self, slack_api_token=None, message_template=None,
-                 agent_channel_config=None, **kwargs):
+    def __init__(
+        self,
+        slack_api_token=None,
+        message_template=None,
+        agent_channel_config=None,
+        **kwargs
+    ):
         super(SlackHealth, self).__init__(**kwargs)
         _log.debug("vip_identity: " + self.core.identity)
 
@@ -55,7 +60,7 @@ class SlackHealth(Agent):
         self.default_config = {
             "slack_api_token": self.slack_api_token,
             "message_template": self.message_template,
-            "agent_channel_config": self.agent_channel_config
+            "agent_channel_config": self.agent_channel_config,
         }
 
         # Set a default configuration to ensure that self.configure is called
@@ -78,31 +83,29 @@ class SlackHealth(Agent):
 
         _log.debug("Configuring Slack Health agent")
 
-        if not isinstance(config['slack_api_token'], str):
+        if not isinstance(config["slack_api_token"], str):
             _log.warning("Supplied slack_api_token is not a string, ignored")
-            slack_api_token = ''
+            slack_api_token = ""
         else:
-            slack_api_token = config['slack_api_token']
+            slack_api_token = config["slack_api_token"]
 
-        if not isinstance(config['message_template'], str):
-            _log.warning(
-                "Supplied message_template is not a string, using default"
-            )
+        if not isinstance(config["message_template"], str):
+            _log.warning("Supplied message_template is not a string, using default")
             message_template = (
-                'Agent {agent_identity} ({agent_uuid} - {agent_class}) health'
-                ' is {agent_status} ({alert_key}) with {status_context}'
+                "Agent {agent_identity} ({agent_uuid} - {agent_class}) health"
+                " is {agent_status} ({alert_key}) with {status_context}"
             )
         else:
-            message_template = config['message_template']
+            message_template = config["message_template"]
 
-        if not isinstance(config['agent_channel_config'], dict):
+        if not isinstance(config["agent_channel_config"], dict):
             _log.warning(
                 "Supplied agent_channel_config is not a dict,"
                 " nothing will be published to Slack!"
             )
             agent_channel_config = {}
         else:
-            agent_channel_config = config['agent_channel_config']
+            agent_channel_config = config["agent_channel_config"]
 
         if not all([slack_api_token, message_template, agent_channel_config]):
             return
@@ -114,44 +117,49 @@ class SlackHealth(Agent):
         self.message_template = message_template
         self.agent_channel_config = agent_channel_config
 
-        _log.debug("Unsubscribing from all subscriptions")
-        self.vip.pubsub.unsubscribe("pubsub", None, None)
+        try:
+            _log.debug("Unsubscribing from all subscriptions")
+            self.vip.pubsub.unsubscribe("pubsub", None, None)
+        except KeyError:
+            pass
         _log.debug("Subscribing to all alerts")
         self.vip.pubsub.subscribe(
             peer="pubsub", prefix="alerts", callback=self._handle_publish
         )
 
     def _handle_publish(self, peer, sender, bus, topic, headers, message):
-        m = re.match(r'alerts/(?P<agent_class>.*)/(?P<agent_uuid>.*)', topic)
+        m = re.match(r"alerts/(?P<agent_class>.*)/(?P<agent_uuid>.*)", topic)
         if m:
-            agent_class = m.group('agent_class')
-            agent_uuid = m.group('agent_uuid')
+            agent_class = m.group("agent_class")
+            agent_uuid = m.group("agent_uuid")
         else:
             _log.info(
-                'Alerts from {sender} do not follow the '
-                '"alerts/{agent_class}/{agent_uuid}" template.'
-                .format(sender=sender)
+                "Alerts from {sender} do not follow the "
+                '"alerts/{agent_class}/{agent_uuid}" template.'.format(sender=sender)
             )
-        alert_key = headers.get('alert_key', None)
+        alert_key = headers.get("alert_key", None)
         content = yaml.safe_load(message)
         content = content if isinstance(content, dict) else {}
-        agent_status = content.get('status', None)
-        status_context = content.get('context', None)
-        channels = self.agent_channel_config.get(sender, []) \
-            + self.agent_channel_config.get(agent_uuid, [])
+        agent_status = content.get("status", None)
+        status_context = content.get("context", None)
+        channels = self.agent_channel_config.get(
+            sender, []
+        ) + self.agent_channel_config.get(agent_uuid, [])
         for channel in channels:
             text = self.message_template.format(
-                agent_class=agent_class, agent_uuid=agent_uuid,
-                agent_identity=sender, agent_status=agent_status,
-                status_context=status_context, alert_key=alert_key
+                agent_class=agent_class,
+                agent_uuid=agent_uuid,
+                agent_identity=sender,
+                agent_status=agent_status,
+                status_context=status_context,
+                alert_key=alert_key,
             )
             _log.debug(
-                'Sending message "{text}" to Slack channel "{channel}"'
-                .format(text=text, channel=channel)
+                'Sending message "{text}" to Slack channel "{channel}"'.format(
+                    text=text, channel=channel
+                )
             )
-            self._client.api_call(
-                "chat.postMessage", channel=channel, text=text
-            )
+            self._client.api_call("chat.postMessage", channel=channel, text=text)
 
     @Core.receiver("onstart")
     def onstart(self, sender, **kwargs):
@@ -181,7 +189,7 @@ def main():
     utils.vip_main(slack_health, identity="slack_health", version=__version__)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     # Entry point for script
     try:
         sys.exit(main())
