@@ -14,7 +14,7 @@ import yaml
 
 _log = logging.getLogger(__name__)
 utils.setup_logging()
-__version__ = "0.2"
+__version__ = "1.0"
 
 
 def slack_health(config_path, **kwargs):
@@ -92,7 +92,7 @@ class SlackHealth(Agent):
         if not isinstance(config["message_template"], str):
             _log.warning("Supplied message_template is not a string, using default")
             message_template = (
-                "Agent {agent_identity} ({agent_uuid} - {agent_class}) health"
+                "Agent {agent_identity} ({agent_class}) health"
                 " is {agent_status} ({alert_key}) with {status_context}"
             )
         else:
@@ -128,28 +128,27 @@ class SlackHealth(Agent):
         )
 
     def _handle_publish(self, peer, sender, bus, topic, headers, message):
-        m = re.match(r"alerts/(?P<agent_class>.*)/(?P<agent_uuid>.*)", topic)
+        m = re.match(r"alerts/(?P<agent_class>.*)/(?P<agent_identity>.*)", topic)
         if m:
             agent_class = m.group("agent_class")
-            agent_uuid = m.group("agent_uuid")
+            agent_identity = m.group("agent_identity")
         else:
             _log.info(
                 "Alerts from {sender} do not follow the "
-                '"alerts/{agent_class}/{agent_uuid}" template.'.format(sender=sender)
+                '"alerts/{agent_class}/{agent_identity}" template.'.format(
+                    sender=sender
+                )
             )
         alert_key = headers.get("alert_key", None)
         content = yaml.safe_load(message)
         content = content if isinstance(content, dict) else {}
         agent_status = content.get("status", None)
         status_context = content.get("context", None)
-        channels = self.agent_channel_config.get(
-            sender, []
-        ) + self.agent_channel_config.get(agent_uuid, [])
+        channels = self.agent_channel_config.get(agent_identity, [])
         for channel in channels:
             text = self.message_template.format(
                 agent_class=agent_class,
-                agent_uuid=agent_uuid,
-                agent_identity=sender,
+                agent_identity=agent_identity,
                 agent_status=agent_status,
                 status_context=status_context,
                 alert_key=alert_key,

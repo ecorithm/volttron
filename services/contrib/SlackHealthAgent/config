@@ -1,7 +1,7 @@
 # Dictionary mapping either agent UUID or IDENTITY to a list of Slack channel IDs
 agent_channel_config:
   facts_service: [C000XXXXX]
-# agent_identity, agent_uuid, agent_class, agent_status, alert_key and status_context are the only available variables
-message_template: Agent {agent_identity} ({agent_uuid} - {agent_class}) health is {agent_status} ({alert_key}) with {status_context}
+# agent_identity, agent_class, agent_status, alert_key and status_context are the only available variables
+message_template: Agent {agent_identity} ({agent_class}) health is {agent_status} ({alert_key}) with {status_context}
 # Slack API token used to post messages
 slack_api_token: xoxp-token-id
